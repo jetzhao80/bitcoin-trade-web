@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE log4j:configuration PUBLIC "-//log4j/log4j Configuration//EN" "log4j.dtd">
+<log4j:configuration xmlns:log4j="http://jakarta.apache.org/log4j/"
+	threshold="null" debug="false">
+	
+	<appender name="console" class="org.apache.log4j.ConsoleAppender">
+		<param name="Target" value="System.out" />
+		<layout class="org.apache.log4j.PatternLayout">
+			<param name="ConversionPattern" value="[%p][%d{yyyy-MM-dd HH:mm:ss}][%c]-[%m]%n" />
+		</layout>
+	</appender>
+
+    <appender name="catAppender" class="com.dianping.cat.log4j.CatAppender" />
+
+	<root>
+         <level value="WARN" />
+         <appender-ref ref="catAppender" />
+         <appender-ref ref="console" />
+    </root> 
+    
+    <!-- <logger name="com.ibatis" additivity="false">
+		<level value="INFO" />
+		<appender-ref ref="CONSOLE" />
+		<appender-ref ref="mybatisAppender" />
+	</logger>
+
+	<logger name="java.sql">
+		<level value="WARN" />
+	</logger>
+
+	<logger name="org.springframework.jms">
+		<level value="ERROR" />
+	</logger>
+
+	<logger name="org.apache.activemq">
+		<level value="ERROR" />
+	</logger>
+
+	<root>
+		<level value="debug" />
+		<appender-ref ref="console" />
+	</root> -->
+	
+    
+</log4j:configuration>

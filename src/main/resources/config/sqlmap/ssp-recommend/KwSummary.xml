@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.dianping.ssp.recommend.dashboard.dao.KwSummaryDao">
+    <resultMap id="KwSummaryMapping"  type="com.dianping.ssp.recommend.dashboard.entity.KwSummary">
+        <result column="action_num" property="actionNum" />
+        <result column="article_type" property="articleType" />
+        <result column="action_type" property="actionType" />
+        <result column="updatetime" property="updatetime" />
+        <result column="id" property="id" />
+        <result column="partition_date" property="partitionDate"/>
+        <result column="analysis_type" property="analysisType"/>
+    </resultMap>
+
+    <select id="query"  resultMap="KwSummaryMapping">
+        SELECT * from dprpt_ssp_keyword_summary
+        where article_type in
+        <foreach item="articleType" index="index" collection="articleTypeList"
+                 open="(" separator="," close=")">
+            #{articleType}
+        </foreach>
+        AND analysis_type in
+        <foreach item="analysisType" index="index" collection="analysisTypeList"
+                 open="(" separator="," close=")">
+            #{analysisType}
+        </foreach>
+        AND
+        partition_date &gt;= #{startTime}  AND partition_date &lt;= #{endTime}
+
+    </select>
+</mapper>

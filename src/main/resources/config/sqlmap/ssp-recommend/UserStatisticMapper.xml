@@ -1,0 +1,547 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.dianping.ssp.recommend.dashboard.dao.UserOpStatisticDao">
+
+		<resultMap id="userOpDataMap" type="userOpData"/>
+		<resultMap id="straAndAlgoInfoMap" type="straAndAlgoInfo"/>
+	<sql id="filterArticleTypes">
+		<if test="queryEntity.articleTypes != null">
+			AND target_category in
+			<foreach item="articleType"  collection="queryEntity.articleTypes" open="(" separator="," close=")">
+				#{articleType}
+			</foreach>
+		</if>
+	</sql>
+	<!-- 转化率 -->
+        <select id="loadConversionRate" parameterType="com.dianping.ssp.recommend.dashboard.entity.QueryEntity" resultMap="userOpDataMap">
+           	SELECT
+           		<if test="queryEntity.strategyIds != null">
+			    	strategy_id as strategyId,
+			    </if>
+			    <if test="queryEntity.algorithmIds != null and queryEntity.algorithmVersions == null">
+			    	algorithm_id as algoIdAndVersion,
+			    </if>
+			    <if test="queryEntity.algorithmIds != null and queryEntity.algorithmVersions != null">
+			    	concat_ws('#',algorithm_id,algorithm_version) as algoIdAndVersion,
+			    </if>
+			    ctime as time,
+			    ifNULL(COUNT(CASE WHEN  type = 1 then 1 else null end)*100.0/COUNT(CASE WHEN  type = 10 then 1 else null end),0) as conversionRate,
+			    ifNULL(COUNT(CASE WHEN  type = 1 then 1 else null end),0) AS clickCount,
+			    ifNULL(COUNT(CASE WHEN  type = 10 then 1 else null end),0) AS showCount
+			FROM(
+
+				SELECT DISTINCT
+					strategy_id,
+					algorithm_id,
+					algorithm_version,
+					DATE_FORMAT(create_time,<if test="queryEntity.timeType==11">'%Y-%m-%d %H'</if><if test="queryEntity.timeType!=11">'%Y-%m-%d'</if>) AS ctime,
+					uuid,
+					target_id,
+					type
+				FROM
+					mtods_mart_shssp_dw_saori_wide_report_recommend_all
+
+				WHERE
+					type = 1 AND create_time >= #{queryEntity.startDate} AND create_time &lt; #{queryEntity.endDate}
+					<if test="queryEntity.sceneIds != null">
+						AND source in
+						<foreach item="sceneId" index="index" collection="queryEntity.sceneIds"
+								open="(" separator="," close=")">
+							#{sceneId}
+						</foreach>
+					</if>
+					<if test="queryEntity.strategyIds != null">
+						AND strategy_id in
+						<foreach item="strategyId" index="index" collection="queryEntity.strategyIds"
+						  open="(" separator="," close=")">
+							#{strategyId}
+						</foreach>
+					</if>
+					<if test="queryEntity.strategyIds == null">
+						AND strategy_id > 0
+					</if>
+					<if test="queryEntity.algorithmIds != null">
+						AND algorithm_id in
+						<foreach item="algorithmId" index="index" collection="queryEntity.algorithmIds"
+						  open="(" separator="," close=")">
+							#{algorithmId}
+						</foreach>
+					</if>
+					<if test="queryEntity.algorithmVersions != null">
+						AND algorithm_version in
+						<foreach item="algorithmVersion" index="index" collection="queryEntity.algorithmVersions"
+						  open="(" separator="," close=")">
+							#{algorithmVersion}
+						</foreach>
+					</if>
+					<include refid="filterArticleTypes"></include>
+
+			UNION ALL
+				SELECT
+					strategy_id,
+					algorithm_id,
+					algorithm_version,
+					ctime,
+					uuid,
+					target_id,
+					10 AS type
+				FROM(
+
+					SELECT DISTINCT
+						strategy_id,
+						algorithm_id,
+						algorithm_version,
+						DATE_FORMAT(create_time,<if test="queryEntity.timeType==11">'%Y-%m-%d %H'</if><if test="queryEntity.timeType!=11">'%Y-%m-%d'</if>) AS ctime,
+						uuid,
+						target_id,
+						type
+					FROM
+						mtods_mart_shssp_dw_saori_wide_report_recommend_all
+					WHERE
+						type in (10,2) AND create_time >= #{queryEntity.startDate} AND create_time &lt; #{queryEntity.endDate}
+						<if test="queryEntity.sceneIds != null">AND source in
+							<foreach item="sceneId" index="index" collection="queryEntity.sceneIds"
+									 open="(" separator="," close=")">
+								#{sceneId}
+							</foreach>
+						</if>
+						<if test="queryEntity.strategyIds != null">
+							AND strategy_id in
+							<foreach item="strategyId" index="index" collection="queryEntity.strategyIds"
+									 open="(" separator="," close=")">
+								#{strategyId}
+							</foreach>
+						</if>
+						<if test="queryEntity.algorithmIds != null">
+							AND algorithm_id in
+							<foreach item="algorithmId" index="index" collection="queryEntity.algorithmIds"
+									 open="(" separator="," close=")">
+								#{algorithmId}
+							</foreach>
+						</if>
+						<if test="queryEntity.algorithmVersions != null">
+							AND algorithm_version in
+							<foreach item="algorithmVersion" index="index" collection="queryEntity.algorithmVersions"
+									 open="(" separator="," close=")">
+								#{algorithmVersion}
+							</foreach>
+						</if>
+						<include refid="filterArticleTypes"></include>
+
+			) tmp
+
+				GROUP BY
+					ctime,
+					uuid,
+					target_id
+				HAVING
+					COUNT(case when type=10 then 1 else null end) >0 and count(case when type=2 then 1 else null end) > 0
+			)t
+
+			GROUP BY
+				<if test="queryEntity.strategyIds != null">
+			    	strategy_id,
+			    </if>
+			    <if test="queryEntity.algorithmIds != null">
+			    	algorithm_id,
+			    </if> 
+			    <if test="queryEntity.algorithmVersions != null">
+			    	algorithm_version,
+			    </if> 
+			    ctime
+			ORDER BY
+				<if test="queryEntity.strategyIds != null">
+			    	strategyId,
+			    </if>
+			    <if test="queryEntity.algorithmIds != null and queryEntity.algorithmVersions != null">
+			    	algoIdAndVersion,
+			    </if> 
+				time;
+        </select>
+
+	<!-- 覆盖率 -->
+        <select id="loadCoverageRate" parameterType="com.dianping.ssp.recommend.dashboard.entity.QueryEntity" resultMap="userOpDataMap">
+           	SELECT
+           		<if test="queryEntity.strategyIds != null">
+			    	strategy_id as strategyId,
+			    </if>
+			    <if test="queryEntity.algorithmIds != null and queryEntity.algorithmVersions == null">
+			    	algorithm_id as algoIdAndVersion,
+			    </if>
+			    <if test="queryEntity.algorithmIds != null and queryEntity.algorithmVersions != null">
+			    	concat_ws('#',algorithm_id,algorithm_version) as algoIdAndVersion,
+			    </if>
+			    DATE_FORMAT(create_time,<if test="queryEntity.timeType==11">'%Y-%m-%d %H'</if><if test="queryEntity.timeType!=11">'%Y-%m-%d'</if>) as time,
+			    COUNT(distinct target_id)*100.0/#{queryEntity.totalArticleNum} AS coverageRate,
+			    ifNULL(COUNT(distinct target_id),0) as recmdCount,
+			    #{queryEntity.totalArticleNum} AS articleCount
+			FROM
+				mtods_mart_shssp_dw_saori_wide_report_recommend_all
+			WHERE
+			    type = 2 and create_time >= #{queryEntity.startDate} AND create_time &lt; #{queryEntity.endDate}
+				<if test="queryEntity.sceneIds != null">
+					AND source in
+					<foreach item="sceneId" index="index" collection="queryEntity.sceneIds"
+						 	open="(" separator="," close=")">
+						#{sceneId}
+					</foreach>
+				</if>
+			    <if test="queryEntity.strategyIds != null">
+    				AND strategy_id in 
+    				<foreach item="strategyId" index="index" collection="queryEntity.strategyIds"
+				      open="(" separator="," close=")">
+				        #{strategyId}
+  					</foreach>
+ 				</if>
+ 				<if test="queryEntity.algorithmIds != null">
+    				AND algorithm_id in 
+    				<foreach item="algorithmId" index="index" collection="queryEntity.algorithmIds"
+				      open="(" separator="," close=")">
+				        #{algorithmId}
+  					</foreach>
+ 				</if>
+ 				<if test="queryEntity.algorithmVersions != null">
+    				AND algorithm_version in 
+    				<foreach item="algorithmVersion" index="index" collection="queryEntity.algorithmVersions"
+				      open="(" separator="," close=")">
+				        #{algorithmVersion}
+  					</foreach>
+ 				</if>
+				<include refid="filterArticleTypes"></include>
+
+			GROUP BY
+				<if test="queryEntity.strategyIds != null">
+			    	strategy_id,
+			    </if>
+			    <if test="queryEntity.algorithmIds != null">
+			    	algorithm_id,
+			    </if> 
+			    <if test="queryEntity.algorithmVersions != null">
+			    	algorithm_version,
+			    </if> 
+			    DATE_FORMAT(create_time,<if test="queryEntity.timeType==11">'%Y-%m-%d %H'</if><if test="queryEntity.timeType!=11">'%Y-%m-%d'</if>)
+			ORDER BY
+				time;
+        </select>
+	<!-- 覆盖率 去重/推荐数-->
+        <select id="loadCoverageRateNew" parameterType="com.dianping.ssp.recommend.dashboard.entity.QueryEntity" resultMap="userOpDataMap">
+           	SELECT
+           		<if test="queryEntity.strategyIds != null">
+			    	strategy_id as strategyId,
+			    </if>
+			    <if test="queryEntity.algorithmIds != null and queryEntity.algorithmVersions == null">
+			    	algorithm_id as algoIdAndVersion,
+			    </if>
+			    <if test="queryEntity.algorithmIds != null and queryEntity.algorithmVersions != null">
+			    	concat_ws('#',algorithm_id,algorithm_version) as algoIdAndVersion,
+			    </if>
+			    DATE_FORMAT(create_time,<if test="queryEntity.timeType==11">'%Y-%m-%d %H'</if><if test="queryEntity.timeType!=11">'%Y-%m-%d'</if>) as time,
+			    COUNT(distinct target_id)*100.0/COUNT(target_id) AS coverageRate,
+			    ifNULL(COUNT(distinct target_id),0) as recmdCount,
+				COUNT(target_id) AS articleCount
+			FROM
+				mtods_mart_shssp_dw_saori_wide_report_recommend_all
+			WHERE
+			    type = 2 and create_time >= #{queryEntity.startDate} AND create_time &lt; #{queryEntity.endDate}
+				<if test="queryEntity.sceneIds != null">
+					AND source in
+					<foreach item="sceneId" index="index" collection="queryEntity.sceneIds"
+						 	open="(" separator="," close=")">
+						#{sceneId}
+					</foreach>
+				</if>
+			    <if test="queryEntity.strategyIds != null">
+    				AND strategy_id in
+    				<foreach item="strategyId" index="index" collection="queryEntity.strategyIds"
+				      open="(" separator="," close=")">
+				        #{strategyId}
+  					</foreach>
+ 				</if>
+ 				<if test="queryEntity.algorithmIds != null">
+    				AND algorithm_id in
+    				<foreach item="algorithmId" index="index" collection="queryEntity.algorithmIds"
+				      open="(" separator="," close=")">
+				        #{algorithmId}
+  					</foreach>
+ 				</if>
+ 				<if test="queryEntity.algorithmVersions != null">
+    				AND algorithm_version in
+    				<foreach item="algorithmVersion" index="index" collection="queryEntity.algorithmVersions"
+				      open="(" separator="," close=")">
+				        #{algorithmVersion}
+  					</foreach>
+ 				</if>
+				<include refid="filterArticleTypes"></include>
+
+			GROUP BY
+				<if test="queryEntity.strategyIds != null">
+			    	strategy_id,
+			    </if>
+			    <if test="queryEntity.algorithmIds != null">
+			    	algorithm_id,
+			    </if>
+			    <if test="queryEntity.algorithmVersions != null">
+			    	algorithm_version,
+			    </if>
+			    DATE_FORMAT(create_time,<if test="queryEntity.timeType==11">'%Y-%m-%d %H'</if><if test="queryEntity.timeType!=11">'%Y-%m-%d'</if>)
+			ORDER BY
+				time;
+        </select>
+
+        <!-- 露出率 -->
+        <select id="loadShowRate" parameterType="com.dianping.ssp.recommend.dashboard.entity.QueryEntity" resultMap="userOpDataMap">
+           	SELECT
+           		<if test="queryEntity.strategyIds != null">
+			    	strategy_id as strategyId,
+			    </if>
+			    <if test="queryEntity.algorithmIds != null and queryEntity.algorithmVersions == null">
+			    	algorithm_id as algoIdAndVersion,
+			    </if>
+			    <if test="queryEntity.algorithmIds != null and queryEntity.algorithmVersions != null">
+			    	concat_ws('#',algorithm_id,algorithm_version) as algoIdAndVersion,
+			    </if>
+			    ctime as time,
+			    ifNULL(COUNT(CASE WHEN  type = 10 then 1 else null end)*100.0/COUNT(CASE WHEN  type = 2 then 1 else null end),0) as showRate,
+   	 			ifNULL(COUNT(CASE WHEN  type = 10 then 1 else null end),0) AS showCount,
+    			ifNULL(COUNT(CASE WHEN  type = 2 then 1 else null end),0) AS recmdCount
+			FROM(
+				SELECT
+					strategy_id,
+					algorithm_id,
+					algorithm_version,
+					ctime,
+					uuid,
+					target_id,
+					type
+				FROM(
+
+					SELECT DISTINCT
+						strategy_id,
+						algorithm_id,
+						algorithm_version,
+						DATE_FORMAT(create_time,<if test="queryEntity.timeType==11">'%Y-%m-%d %H'</if><if test="queryEntity.timeType!=11">'%Y-%m-%d'</if>) AS ctime,
+						uuid,
+						target_id,
+						type
+					FROM
+						mtods_mart_shssp_dw_saori_wide_report_recommend_all
+					WHERE
+						type = 2 AND create_time >= #{queryEntity.startDate} AND create_time &lt; #{queryEntity.endDate}
+						<if test="queryEntity.sceneIds != null">
+							AND source in
+							<foreach item="sceneId" index="index" collection="queryEntity.sceneIds"
+						 			open="(" separator="," close=")">
+								#{sceneId}
+							</foreach>
+						</if>
+						<if test="queryEntity.strategyIds != null">
+							AND strategy_id in
+							<foreach item="strategyId" index="index" collection="queryEntity.strategyIds"
+						 			open="(" separator="," close=")">
+								#{strategyId}
+							</foreach>
+						</if>
+						<if test="queryEntity.algorithmIds != null">
+							AND algorithm_id in
+							<foreach item="algorithmId" index="index" collection="queryEntity.algorithmIds"
+						 			open="(" separator="," close=")">
+								#{algorithmId}
+							</foreach>
+						</if>
+						<if test="queryEntity.algorithmVersions != null">
+							AND algorithm_version in
+							<foreach item="algorithmVersion" index="index" collection="queryEntity.algorithmVersions"
+						 			open="(" separator="," close=")">
+								#{algorithmVersion}
+							</foreach>
+						</if>
+						<include refid="filterArticleTypes"></include>
+
+						) tmp1
+					UNION ALL
+					SELECT
+						strategy_id,
+						algorithm_id,
+						algorithm_version,
+						ctime,
+						uuid,
+						target_id,
+						10 AS type
+					FROM(
+
+						SELECT DISTINCT
+							strategy_id,
+							algorithm_id,
+							algorithm_version,
+							DATE_FORMAT(create_time,<if test="queryEntity.timeType==11">'%Y-%m-%d %H'</if><if test="queryEntity.timeType!=11">'%Y-%m-%d'</if>) AS ctime,
+							uuid,
+							target_id,
+							type
+						FROM
+							mtods_mart_shssp_dw_saori_wide_report_recommend_all
+						WHERE
+							type in (10,2) AND create_time >= #{queryEntity.startDate} AND create_time &lt; #{queryEntity.endDate}
+							<if test="queryEntity.sceneIds != null">AND source in
+								<foreach item="sceneId" index="index" collection="queryEntity.sceneIds"
+										open="(" separator="," close=")">
+									#{sceneId}
+								</foreach>
+							</if>
+							<if test="queryEntity.strategyIds != null">
+							AND strategy_id in
+							<foreach item="strategyId" index="index" collection="queryEntity.strategyIds"
+							  open="(" separator="," close=")">
+								#{strategyId}
+							</foreach>
+							</if>
+							<if test="queryEntity.algorithmIds != null">
+								AND algorithm_id in
+								<foreach item="algorithmId" index="index" collection="queryEntity.algorithmIds"
+								  open="(" separator="," close=")">
+									#{algorithmId}
+								</foreach>
+							</if>
+							<if test="queryEntity.algorithmVersions != null">
+								AND algorithm_version in
+								<foreach item="algorithmVersion" index="index" collection="queryEntity.algorithmVersions"
+								  open="(" separator="," close=")">
+									#{algorithmVersion}
+								</foreach>
+							</if>
+							<include refid="filterArticleTypes"></include>
+
+							) tmp
+
+						GROUP BY
+							ctime,
+							uuid,
+							target_id
+						HAVING
+							COUNT(case when type=10 then 1 else null end) >0 and count(case when type=2 then 1 else null end) > 0
+						) t
+
+					GROUP BY
+						<if test="queryEntity.strategyIds != null">
+							strategy_id,
+						</if>
+						<if test="queryEntity.algorithmIds != null">
+							algorithm_id,
+						</if>
+						<if test="queryEntity.algorithmVersions != null">
+							algorithm_version,
+						</if>
+						ctime
+					ORDER BY
+						<if test="queryEntity.strategyIds != null">
+							strategyId,
+						</if>
+						<if test="queryEntity.algorithmIds != null and queryEntity.algorithmVersions != null">
+							algoIdAndVersion,
+						</if>
+						time;
+        </select>
+        
+        <!-- 多样性 -->
+        <select id="loadDiversity" parameterType="com.dianping.ssp.recommend.dashboard.entity.QueryEntity" resultMap="userOpDataMap">
+           	SELECT
+           		<if test="queryEntity.strategyIds != null">
+			    	strategyId,
+			    </if>
+			    <if test="queryEntity.algorithmIds != null">
+			    	algoIdAndVersion,
+			    </if>
+			    createTime as time,
+			    sum(articleCatNum) * 100.0 / count(uuid) / #{queryEntity.totalArticleCategoryNum} as diversity,
+			    sum(articleCatNum) as recmdCategoryCount,
+			    count(uuid) as userCount,
+			    #{queryEntity.totalArticleCategoryNum} as totalCategoryCount
+			FROM
+			    (
+			        SELECT
+					    <if test="queryEntity.strategyIds != null">
+					    	strategy_id as strategyId,
+					    </if>
+					    <if test="queryEntity.algorithmIds != null and queryEntity.algorithmVersions == null">
+					    	algorithm_id as algoIdAndVersion,
+					    </if>
+					    <if test="queryEntity.algorithmIds != null and queryEntity.algorithmVersions != null">
+					    	concat_ws('#',algorithm_id,algorithm_version) as algoIdAndVersion,
+					    </if>
+			            DATE_FORMAT(create_time, '%Y-%m-%d') AS createTime,
+			            uuid,
+			            COUNT(DISTINCT target_category, target_sub_category) AS articleCatNum
+			        FROM
+						mtods_mart_shssp_dw_saori_wide_report_recommend_all
+			        WHERE
+			            type = 2
+			       		AND create_time >= #{queryEntity.startDate} 
+			       		AND create_time &lt; #{queryEntity.endDate}
+						<if test="queryEntity.sceneIds != null">
+							AND source in
+							<foreach item="sceneId" index="index" collection="queryEntity.sceneIds"
+						 			open="(" separator="," close=")">
+								#{sceneId}
+							</foreach>
+						</if>
+						<if test="queryEntity.strategyIds != null">
+		    				AND strategy_id in 
+		    				<foreach item="strategyId" index="index" collection="queryEntity.strategyIds"
+						      open="(" separator="," close=")">
+						        #{strategyId}
+		  					</foreach>
+		 				</if>
+		 				<if test="queryEntity.algorithmIds != null">
+		    				AND algorithm_id in 
+		    				<foreach item="algorithmId" index="index" collection="queryEntity.algorithmIds"
+						      open="(" separator="," close=")">
+						        #{algorithmId}
+		  					</foreach>
+		 				</if>
+		 				<if test="queryEntity.algorithmVersions != null">
+		    				AND algorithm_version in 
+		    				<foreach item="algorithmVersion" index="index" collection="queryEntity.algorithmVersions"
+						      open="(" separator="," close=")">
+						        #{algorithmVersion}
+		  					</foreach>
+		 				</if>
+						<include refid="filterArticleTypes"></include>
+			GROUP BY
+			            <if test="queryEntity.strategyIds != null">
+					    	strategy_id,
+					    </if>
+					    <if test="queryEntity.algorithmIds != null">
+					    	algorithm_id,
+					    </if> 
+					    <if test="queryEntity.algorithmVersions != null">
+					    	algorithm_version,
+					    </if> 
+			            DATE_FORMAT(create_time, '%Y-%m-%d'),
+			            uuid
+			    ) AS tmp
+			GROUP BY
+			    createTime
+			    <if test="queryEntity.strategyIds != null">
+					,strategyId
+			    </if>
+			    <if test="queryEntity.algorithmIds != null">
+			    	,algoIdAndVersion
+			    </if> 
+        </select>
+
+		<!-- 查询算法信息 -->
+		<select id="loadStraAndAlgoInfo" parameterType="map" resultMap="straAndAlgoInfoMap">
+			SELECT strategy_id as strategyId, algorithm_id as algorithmId, algorithm_version as algorithmVersion
+			FROM mtods_mart_shssp_dw_saori_wide_report_recommend_all
+			WHERE type = 2 AND create_time >= #{queryEntity.startDate} AND create_time &lt; #{queryEntity.endDate}
+			<if test="queryEntity.sceneIds != null">
+				AND source in
+				<foreach item="sceneId" index="index" collection="queryEntity.sceneIds"
+						 open="(" separator="," close=")">
+					#{sceneId}
+				</foreach>
+			</if>
+			<include refid="filterArticleTypes"></include>
+			GROUP BY algorithm_id, algorithm_version, strategy_id
+		</select>
+
+</mapper>

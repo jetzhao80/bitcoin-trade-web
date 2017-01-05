@@ -1,0 +1,16 @@
+.navbar-item-active {
+    background-color: #337ab7;
+    color: #fff;
+}
+.navbar-default .navbar-nav li.active > a {
+    background-color: #337ab7;
+    color: #fff;
+}
+.navbar-default .navbar-nav li.active.open > a {
+    background-color: #337ab7;
+    color: #fff;
+}
+.navbar-default .navbar-nav li.active > a:hover {
+    background-color: #337ab7;
+    color: #fff;
+}

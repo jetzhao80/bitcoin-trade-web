@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:aop="http://www.springframework.org/schema/aop"
+	xmlns:tx="http://www.springframework.org/schema/tx" xmlns:mvc="http://www.springframework.org/schema/mvc"
+	xmlns:avatar="http://www.dianping.com/schema/avatar"
+	xsi:schemaLocation="
+    http://www.springframework.org/schema/beans 
+    http://www.springframework.org/schema/beans/spring-beans-2.5.xsd
+    
+    http://www.springframework.org/schema/context 
+    http://www.springframework.org/schema/context/spring-context-2.5.xsd
+    
+	http://www.springframework.org/schema/aop 
+	http://www.springframework.org/schema/aop/spring-aop-2.5.xsd
+	
+	http://www.springframework.org/schema/tx 
+	http://www.springframework.org/schema/tx/spring-tx-2.5.xsd
+	
+	http://www.springframework.org/schema/mvc 
+    http://www.springframework.org/schema/mvc/spring-mvc-3.2.xsd
+    
+    http://www.dianping.com/schema/avatar
+    http://www.dianping.com/schema/avatar/avatar-1.0.xsd">
+
+
+	<context:component-scan base-package="com.dianping" />
+	<bean
+		class="org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerAdapter">
+		<property name="messageConverters">
+			<list>
+				<bean class="org.springframework.http.converter.json.MappingJacksonHttpMessageConverter">
+					<property name="supportedMediaTypes">
+						<list>
+							<value>text/plain;charset=utf-8</value>
+							<value>text/html;charset=utf-8</value>
+							<value>text/json;charset=utf-8</value>
+							<value>application/json;charset=utf-8</value>
+						</list>
+					</property>
+				</bean>
+			</list>
+		</property>
+	</bean>
+	
+	<bean id="multipartResolver" class="org.springframework.web.multipart.commons.CommonsMultipartResolver">
+		<property name="defaultEncoding" value="UTF-8" />
+		<property name="maxUploadSize" value="10000000"/> 
+	</bean>
+	
+	<context:annotation-config />
+	<mvc:resources mapping="/recommend/static/**" location="/static/" />
+	<mvc:annotation-driven />
+	<mvc:default-servlet-handler />
+	
+	<aop:aspectj-autoproxy />
+	
+	
+	<bean name="placeholder" lazy-init="false"
+		class="com.dianping.lion.client.SpringConfig">
+		<property name="propertiesPath" value="config/applicationContext.properties" />
+	</bean>
+	
+	<avatar:cache jms-url="${cache.jms.url}" topic-name="${cache.jms.topic.name}" jms-username="${cache.jms.username}"
+		jms-password="${cache.jms.password}" />
+		
+	<bean id="mtFilter" class="com.sankuai.meituan.filter.spring.FilterFactoryBean">
+		<property name="unauthorizedUrl" value="/recommend/unauthorized" />
+		<property name="loginUrl" value="${ssp-recommend-dashboard-web.upm.loginUrl}" />
+		<property name="loginApiUrl" value="${ssp-recommend-dashboard-web.upm.loginApiUrl}" />
+		<property name="authUrl" value="${ssp-recommend-dashboard-web.upm.authUrl}" />
+		<property name="filterChainDefinitions">
+			<value><!-- 按自己系统需求配置。等号两边要有空格。 -->
+				/index.jsp = anon
+				/logout = logout
+				/recommend/unauthorized = anon
+				/recommend/** = auth
+				/** = user
+			</value>
+		</property>
+	</bean>
+
+	<bean id="upmAuthService" class="com.sankuai.meituan.upm.tools.UpmAuthService">
+		<property name="clientId" value="${ssp-recommend-dashboard-web.upm.appkey}" />
+		<property name="secret" value="${ssp-recommend-dashboard-web.upm.secret}" />
+		<property name="connectionTimeout" value="5000" />
+		<property name="soTimeout" value="5000" />
+		<property name="retry" value="3" />
+	</bean>
+
+    <bean id="freemarkerConfiguration"
+          class="org.springframework.beans.factory.config.PropertiesFactoryBean">
+        <property name="location" value="classpath:config/freemarker/freemarker.properties" />
+    </bean>
+
+    <bean id="freemarkerConfig"
+		class="org.springframework.web.servlet.view.freemarker.FreeMarkerConfigurer">
+		<property name="templateLoaderPath" value="/WEB-INF/freemarker/" />
+        <property name="freemarkerSettings" ref="freemarkerConfiguration"/>
+	</bean>
+
+	<bean id="viewResolver"
+		class="org.springframework.web.servlet.view.freemarker.FreeMarkerViewResolver">
+		<property name="cache" value="true" />
+		<property name="prefix" value="" />
+		<property name="suffix" value=".ftl" />
+		<property name="contentType" value="text/html; charset=UTF-8" />
+	</bean>
+</beans>
