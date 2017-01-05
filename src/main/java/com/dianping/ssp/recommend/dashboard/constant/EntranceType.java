@@ -24,4 +24,5 @@ public class EntranceType extends Code {
     public static final int KEYWORD = 201;//9
     @Display("资讯详情页")
     public static final int ZIXUN_DETAIL = 101;
+
 }
