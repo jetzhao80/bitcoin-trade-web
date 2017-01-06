@@ -1,4 +1,4 @@
-package com.lin.bittrade;
+package com.lin.bit.controller;
 
 /**
  * Created by lin.zhao on 2017/1/5.

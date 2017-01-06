@@ -1,7 +1,16 @@
-package com.lin.bit.controller;
+package com.lin.bit.trade;
 
 /**
  * Created by lin.zhao on 2017/1/5.
  */
-public class TradeService {
+public interface TradeService {
+
+    void buy();
+
+    void buyAtPrice();
+
+    void sell();
+
+    void sellAtPrice();
+
 }
